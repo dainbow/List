@@ -1,28 +1,31 @@
 #include "List.h"
+#include "Graph.h"
 
 int main() {
     ListCtor(list);
 
     ListInsertBack(&list, 228);
-    ListInsertBack(&list, 228);
-    ListInsertBack(&list, 228);
-    ListInsertBack(&list, 228);
-    ListInsertBack(&list, 228);
-    ListInsertBack(&list, 228);
-    
+    ListInsertBack(&list, 322);
+    ListInsert(&list, 777, 0);
+    ListDelete(&list, 1);
+
+    char name[MAX_FILE_NAME_LENGTH] = "zhopa";
+    MakeListGraph(&list, name);
 
     PrintList(&list);
-
+    
     ListDtor(&list);
 }
 
 void ListCtor_(List* list) {
     assert(list != nullptr);
 
-    list->memoryAmount = BEGINNING_CHAINS_AMOUNT;
-    list->chainsAmount = 1;
-    list->head         = 0;
-    list->tail         = 0;
+    list->memoryAmount        = BEGINNING_CHAINS_AMOUNT;
+    list->chainsAmount        = 1;
+    list->head                = 0;
+    list->tail                = 0;
+    list->free                = 1;
+    list->fastTranslationFlag = 0;
 
     list->chains = (Chain*)calloc(BEGINNING_CHAINS_AMOUNT, sizeof(list->chains[0]));
     FillChainsWithPoison(list, 0);
@@ -35,34 +38,35 @@ void ListDtor(List* list) {
 
     free(list->chains);
 
-    list->memoryAmount = 0;
-    list->chainsAmount = 0;
-    list->head         = 0;
-    list->tail         = 0;
+    list->memoryAmount        = 0;
+    list->chainsAmount        = 0;
+    list->head                = 0;
+    list->tail                = 0;
+    list->fastTranslationFlag = 0;
 }
 
 void FillChainsWithPoison(List* list, uint32_t index) {
     assert(list != nullptr);
 
     for (uint32_t curChain = index; curChain < list->memoryAmount; curChain++) {
-        list->chains[curChain].next     = -1;
+        list->chains[curChain].data     = -666;
+        list->chains[curChain].next     = curChain + 1;
         list->chains[curChain].previous = -1;
     }
+
+    list->chains[list->memoryAmount - 1].next = 0;
 }
 
 uint32_t ListInsertBack(List* list, ListElem appElem) {
     return ListInsert(list, appElem, list->tail);
 }
 
+//TODO Find easy way to find free chain
 int32_t FindFreeChain(List* list) {
     assert(list != nullptr);
 
-    for (uint32_t curChain = 0; curChain < list->memoryAmount; curChain++) {
-        if (list->chains[curChain].next == -1) {
-            return curChain;
-        }
-    }
-
+    if (list->free != 0)
+        return list->free;
     return -1;
 }
 
@@ -88,10 +92,6 @@ void ListDelete(List* list, uint32_t index) {
         IsListOk(list);
     #endif
 
-    if ((list->chainsAmount - 1) < (uint32_t)((float)list->memoryAmount / DECREASE_MULTPLIER)) {
-        list->chains = MemoryDecrease(list);
-    }
-
     if (list->chains[index].next != 0) {
         list->chains[list->chains[index].next].previous = list->chains[index].previous;
     }
@@ -106,10 +106,12 @@ void ListDelete(List* list, uint32_t index) {
         list->head = list->chains[index].next;
     }
 
-    list->chains[index].next     = -1;
+    list->chains[index].next     = list->free;
     list->chains[index].previous = -1;
+    list->chains[index].data = -666;
 
     list->chainsAmount--;
+    list->free = index;
 
     #if(_DEBUG_MODE_ == 1)
         IsListOk(list);
@@ -118,7 +120,7 @@ void ListDelete(List* list, uint32_t index) {
 
 uint32_t ListInsert(List* list, ListElem insElem, uint32_t index) {
     assert(list != nullptr);
-    assert(list->chains[index].next != -1);
+    assert(list->chains[index].previous != -1);
     #if(_DEBUG_MODE_ == 1)
         IsListOk(list);
     #endif
@@ -129,6 +131,7 @@ uint32_t ListInsert(List* list, ListElem insElem, uint32_t index) {
     
     int32_t freeChain = FindFreeChain(list);
     assert(freeChain != -1);
+    list->free = list->chains[list->free].next;
 
     if ((list->chains[index].next != 0) || ((index == 0) && (list ->chainsAmount != 1))) {
         printf("Setted prev of %d to %d\n" 
@@ -165,19 +168,90 @@ uint32_t ListInsert(List* list, ListElem insElem, uint32_t index) {
 
     list->chains[freeChain].data = insElem;
     list->chainsAmount++;
-    
-    return freeChain;
 
     #if(_DEBUG_MODE_ == 1)
         IsListOk(list);
     #endif
+    return freeChain;
 }
 
+
+//TODO Separate verifier to functions
 ListErrors ListVerifier(List* list) {
     assert(list != nullptr);
 
     uint32_t myChainCounter = 1;
     bool oneElemZeroLoopFlag = 0;
+
+    ListErrors curError = NO_ERROR;
+
+    if ((curError = VerifyListStructure(list)) != NO_ERROR) {
+        return curError;
+    }
+
+    for (uint32_t curChain = 0; curChain < list->memoryAmount; curChain++) {
+        Chain currentChain = list->chains[curChain];
+
+        if (currentChain.next == -1) {
+            return NEXT_IS_MINUS_ONE;
+        }
+
+        if (curChain == 0) {
+            if (currentChain.next != currentChain.previous) {
+                return NULL_BREAKPOINT;
+            }
+
+            continue;
+        }
+
+        if (currentChain.next == currentChain.previous) {
+            if (oneElemZeroLoopFlag || list->chainsAmount > 2) {
+                return NON_ZERO_LOOP;
+            }
+            else {
+                oneElemZeroLoopFlag = 1;
+            }
+        }
+
+        if (currentChain.previous == 0) {
+            if (curChain != list->head) {
+                return FIRST_ELEM_NOT_HEAD;
+            }
+        }
+        else if (currentChain.previous == -1) {
+            if ((list->chains[currentChain.next].previous != -1) &&
+                (currentChain.next != 0)) {
+                return FREE_CHAIN_GOES_TO_NON_FREE_CHAIN;
+            }
+        }
+        else if ((int32_t)curChain != list->chains[currentChain.previous].next) {
+            return UNLINKED_CHAIN_ON_THE_LEFT;
+        }
+
+        if ((currentChain.next == 0) &&
+            (currentChain.previous != -1)) {
+            if (curChain != list->tail) {
+                return LAST_ELEM_NOT_TAIL;
+            }
+        }
+        else if (((int32_t)curChain != list->chains[currentChain.next].previous) &&
+                 (currentChain.previous != -1)) {
+            return UNLINKED_CHAIN_ON_THE_RIGHT;
+        }
+
+        if (currentChain.previous != -1)
+            myChainCounter++;
+    }
+
+    if (myChainCounter != list->chainsAmount) {
+        return UNMATCHED_LINKED_CHAINS_COUNTER;
+    }  
+
+    return NO_ERROR;
+}
+
+ListErrors VerifyListStructure(List* list) {
+    assert(list != nullptr);
     
     if (list->head == list->tail) {
         if (list->chainsAmount > 2) {
@@ -199,74 +273,7 @@ ListErrors ListVerifier(List* list) {
         if (list->tail == 0){
             return ZERO_TAIL_WHEN_HAVE_CHAINS;
         }
-
     }
-
-    for (uint32_t curChain = 0; curChain < list->memoryAmount; curChain++) {
-        Chain currentChain = list->chains[curChain];
-
-        if ((currentChain.next == -1) ^ (currentChain.previous == -1)) {
-            if (currentChain.next == -1) {
-                return NEXT_IS_MINUS_ONE;
-            }
-
-            if (currentChain.previous == -1) {
-                return PREV_IS_MINUS_ONE;
-            }
-        }
-        if (currentChain.next == -1) {
-            continue;
-        }
-
-        if (curChain == 0) {
-            if (currentChain.next != currentChain.previous) {
-                return NULL_BREAKPOINT;
-            }
-
-            continue;
-        }
-
-        if (currentChain.next == currentChain.previous) {
-            if ((currentChain.next != 0) && (curChain != 0)) {
-                if (oneElemZeroLoopFlag || list->chainsAmount > 2) {
-                    return NON_ZERO_LOOP;
-                }
-                else {
-                    oneElemZeroLoopFlag = 1;
-                }
-            }
-        }
-
-        if (currentChain.previous == 0) {
-            if (curChain != list->head) {
-                fprintf(stderr, "curChain is %u; Head should be %u\n", curChain, list->head);
-
-                return FIRST_ELEM_NOT_HEAD;
-            }
-        }
-        else if ((int32_t)curChain != list->chains[currentChain.previous].next) {
-            return UNLINKED_CHAIN_ON_THE_LEFT;
-        }
-
-        if (currentChain.next == 0) {
-            if (curChain != list->tail) {
-                return LAST_ELEM_NOT_TAIL;
-            }
-        }
-        else if ((int32_t)curChain != list->chains[currentChain.next].previous) {
-            fprintf(stderr, "My chain next is %d; Next chain prev is %d\n", currentChain.next, list->chains[currentChain.next].previous);
-            
-            return UNLINKED_CHAIN_ON_THE_RIGHT;
-        }
-
-        myChainCounter++;
-    }
-
-    if (myChainCounter != list->chainsAmount) {
-        fprintf(stderr, "I counted %u; In structure %u;\n", myChainCounter, list->chainsAmount);
-
-        return UNMATCHED_LINKED_CHAINS_COUNTER;
-    }  
 
     return NO_ERROR;
 }
@@ -282,12 +289,53 @@ Chain *MemoryIncrease(List* list) {
     return newChains;
 }
 
-Chain *MemoryDecrease(List* list) {
+Chain *MemoryOptimizer_Slow_Slow(List* list) {
     assert(list != nullptr);
     
     list->memoryAmount = (uint32_t)((float)list->memoryAmount / DECREASE_MULTPLIER);
-    Chain* newChains = (Chain*)realloc(list->chains, list->memoryAmount * sizeof(newChains[0]));
-    assert(newChains != nullptr);
+    Chain* newChains = (Chain*)calloc(list->memoryAmount, sizeof(newChains[0]));
+    assert(newChains != nullptr);  //TODO ЕСЛИ НЕТ ПАМЯТИ, ТО КВИКСОРТ
 
+    for (uint32_t curChain = list->head, chainNum = 1; curChain != 0; curChain = list->chains[curChain].next, chainNum++) {
+        Chain curChainStruct = list->chains[curChain];
+        if (curChain == list->head) {
+            newChains[curChain] = {curChainStruct.data, (int32_t)(chainNum + 1), 0};
+        }
+        else if (curChain == list->tail) {
+            newChains[curChain] = {curChainStruct.data, 0, (int32_t)(chainNum - 1)};
+        }
+        else {
+            newChains[curChain] = {curChainStruct.data, (int32_t)(chainNum + 1), (int32_t)(chainNum - 1)};
+        }
+
+        printf("chainNum is %u\n", chainNum);
+        printf("chainsAmount is %u\n", list->chainsAmount);
+    }
     return newChains;
+}
+
+bool EnableSuperSpeedTranslation(List* list) {
+    assert(list != nullptr);
+
+    list->chains = MemoryOptimizer_Slow_Slow(list);
+    FillChainsWithPoison(list, list->chainsAmount);
+
+    return 1;
+}
+
+int32_t TranslateLogicalNumberToPhisicalFunctionAsSlowAsItsNameLong(List* list, uint32_t index) {
+    assert(list != nullptr);
+    assert(index < list->chainsAmount);
+
+    if (list->fastTranslationFlag) {
+        return (int32_t)index;
+    }
+
+    for (uint32_t curChain = list->head, chainNum = 1; curChain != 0; curChain = list->chains[curChain].next, chainNum++) {
+        if (chainNum == index) {
+            return (int32_t)curChain;
+        }
+    }
+
+    return -1;
 }

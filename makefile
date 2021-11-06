@@ -3,8 +3,11 @@ CXXFLAGS = -g -std=c++17 -Wall -Wextra -Weffc++ -Wc++0x-compat -Wc++11-compat -W
 SrcDir = src
 BinDir = bin
 
-list.exe: $(BinDir)/List.o
-	g++ $(BinDir)/List.o -o List.exe
+list.exe: $(BinDir)/List.o $(BinDir)/Graph.o
+	g++ $(BinDir)/List.o $(BinDir)/Graph.o -o List.exe
 
 $(BinDir)/List.o: $(SrcDir)/List.cpp $(SrcDir)/List.h
 	g++ -c $(SrcDir)/List.cpp -o $(BinDir)/List.o $(CXXFLAGS)
+
+$(BinDir)/Graph.o: $(SrcDir)/Graph.cpp $(SrcDir)/Graph.h
+	g++ -c $(SrcDir)/Graph.cpp -o $(BinDir)/Graph.o $(CXXFLAGS)

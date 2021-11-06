@@ -1,10 +1,13 @@
+#pragma once
+
 #include <stdint.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-const int32_t BEGINNING_CHAINS_AMOUNT = 2;
+const int32_t BEGINNING_CHAINS_AMOUNT = 10;
 const int32_t FAIL = 0;
+const int32_t MAX_FILE_NAME_LENGTH = 100;
 
 const float INCREASE_MULTPLIER = 1.5;
 const float DECREASE_MULTPLIER = 2;
@@ -26,6 +29,7 @@ enum ListErrors {
     MEMORY_EXCESS,
     UNMATCHED_LINKED_CHAINS_COUNTER,
     NULL_BREAKPOINT,
+    FREE_CHAIN_GOES_TO_NON_FREE_CHAIN,
     NON_ZERO_LOOP,
 };
 
@@ -54,6 +58,9 @@ struct List {
 
     uint32_t head;
     uint32_t tail;
+    uint32_t free;
+
+    bool fastTranslationFlag;
 };
 
 #define ListCtor(name)          \
@@ -67,16 +74,18 @@ void FillChainsWithPoison(List* list, uint32_t index);
 void PrintList(List* list);
 
 ListErrors ListVerifier(List* list);
+ListErrors VerifyListStructure(List* list);
 
 uint32_t ListInsertBack(List* list, ListElem appElem);
 uint32_t ListInsert(List* list, ListElem insElem, uint32_t index);
 void ListDelete(List* list, uint32_t index);
 
 Chain* MemoryIncrease(List* list);
-Chain* MemoryDecrease(List* list);
+Chain* MemoryOptimizer_Slow_Slow(List* list);
+bool EnableSuperSpeedTranslation(List* list);
 
 int32_t FindFreeChain(List* list);
 int32_t FindLastChain(List* list);
 int32_t FindFirstChain(List* list);
 int32_t FindNChain(List* list, uint32_t chainNum);
-
+int32_t TranslateLogicalNumberToPhisicalFunctionAsSlowAsItsNameLong(List* list, uint32_t index);

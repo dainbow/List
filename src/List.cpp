@@ -9,15 +9,14 @@ int main() {
     ListInsert(&list, 777, 0);
     ListDelete(&list, 1);
 
-    char name[MAX_FILE_NAME_LENGTH] = "zhopa";
-    MakeListGraph(&list, name);
+    MakeListGraph(&list, STANDART_GRAPH_NAME);
 
     PrintList(&list);
     
     ListDtor(&list);
 }
 
-void ListCtor_(List* list) {
+void ListCtor_(List* list, VarInfo info) {
     assert(list != nullptr);
 
     list->memoryAmount        = BEGINNING_CHAINS_AMOUNT;
@@ -26,6 +25,10 @@ void ListCtor_(List* list) {
     list->tail                = 0;
     list->free                = 1;
     list->fastTranslationFlag = 0;
+
+    #if (_DEBUG_MODE_)
+        list->creationInfo = info;
+    #endif
 
     list->chains = (Chain*)calloc(BEGINNING_CHAINS_AMOUNT, sizeof(list->chains[0]));
     FillChainsWithPoison(list, 0);
@@ -338,4 +341,62 @@ int32_t TranslateLogicalNumberToPhisicalFunctionAsSlowAsItsNameLong(List* list, 
     }
 
     return -1;
+}
+
+const char* ConvertErrorToString(ListErrors error) {
+    switch (error) {
+        case NO_ERROR:                         return "Ok";
+        case UNLINKED_CHAIN_ON_THE_LEFT:       return "UNLINKED CHAIN ON THE LEFT SIDE";
+        case UNLINKED_CHAIN_ON_THE_RIGHT:      return "UNLINKED CHAIN ON THE RIGHT SIDE";
+        case NEXT_IS_MINUS_ONE:                return "SOME CHAIN NEXT IS MINUS ONE";
+        case FIRST_ELEM_NOT_HEAD:              return "FIRST ELEMENT OF LIST ISN'T HEAD";
+        case LAST_ELEM_NOT_TAIL:               return "LAST ELEMENT OF LIST ISN'H TAIL";
+        case NON_ZERO_HEAD_WHEN_HAVENT_CHAINS: return "THE HEAD ISN'T ZERO WHEN DON'T HAVE NON_NULL CHAINS";
+        case ZERO_HEAD_WHEN_HAVE_CHAINS:       return "THE HEAD IS ZERO WHEN HAVE NON_NULL CHAINS";
+        case ZERO_TAIL_WHEN_HAVE_CHAINS:       return "THE TAIL IS ZERO WHEN HAVE NON_NULL CHAINS";
+        case HEAD_EQUAL_TO_TAIL:               return "HEAD IS EQUAL TO TAIL WHEN HAVE 2 OR MORE NON_NULL CHAINS";
+        case MEMORY_EXCESS:                    return "AMOUNT OF CHAINS IS MORE THAN MEMORY AMOUNT";
+        case UNMATCHED_LINKED_CHAINS_COUNTER:  return "HAVE MORE LINKED CHAINS THAN STRUCTURE STORES";
+        case NULL_BREAKPOINT:                  return "NULL CHAIN DOESN'T LOOP";
+        case FREE_CHAIN_GOES_TO_NON_FREE_CHAIN:return "FREE CHAIN POINTS TO NON_FREE CHAIN";
+        case NON_ZERO_LOOP:                    return "NON ZERO LOOP";
+
+        default: return "UNKNOWN ERROR";
+    }
+}
+
+void MakeListDump(List* list, ListErrors error, char* graphName, VarInfo dumpInfo) {
+    assert(graphName != nullptr);
+    char endName[MAX_FILE_NAME_LENGTH] = "";
+
+    GenerateOutputName(STANDART_DUMP_NAME, endName, D_PATH, D_FORMAT);
+    strcat(endName, D_FORMAT);
+
+    FILE* output = fopen(endName, "w");
+    fprintf(output, "<pre>\n");
+
+    fprintf(output, "<font color=\"Red\">\n");
+    fprintf(output, "ERROR %s ERROR", ConvertErrorToString(error));
+    fprintf(output, "</font>\n");
+
+    fprintf(output, "Dump from %s() at %s(%d) in list called now \"%s\": IsListOk() FAILED\n", 
+                    dumpInfo.function, dumpInfo.file, dumpInfo.line, dumpInfo.name);
+    fprintf(output, "list [%p] ", list);
+    fprintf(output, "from %s (%d), %s()\n",
+            list->creationInfo.file,  list->creationInfo.line, list->creationInfo.function);
+
+    fprintf(output, "<font color=\"Blue\">\n");
+    fprintf(output, "\tList head is %u\n" 
+                    "\tList tail is %u\n" 
+                    "\tList free is %u\n"
+                    "\tList chains[%p]",
+                    list->head, list->tail, list->free, list->chains);
+    fprintf(output, "</font>\n");
+
+    fprintf(output, "<font color=\"Green\">\n");
+    fprintf(output, "\t List chains amount is %u\n" 
+                    "\t List memory amount is %u\n"
+                    "\t List super speed transition flag is %d\n", 
+                    list->chainsAmount, list->memoryAmount, list->fastTranslationFlag);
+    fprintf(output, "</font>\n");
 }

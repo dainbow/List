@@ -1,12 +1,12 @@
 #include "List.h"
 #include "graph.h"
 
-void MakeListGraph(List* list, char name[]) {
+char* MakeListGraph(List* list, const char name[]) {
     assert(list != nullptr);
     
-    char endName[MAX_PATH_FILE_LENGTH] = "";
+    static char endName[MAX_PATH_FILE_LENGTH] = "";
 
-    GenerateOutputGraphName(name, endName);
+    GenerateOutputName(name, endName, G_PATH, G_OUTPUT_FORMAT);
 
     FILE* output = fopen(endName, "w");
     assert(output != nullptr);
@@ -44,20 +44,22 @@ void MakeListGraph(List* list, char name[]) {
     system(command);
     system(del);
     system(start);
+
+    return endName;
 }
 
-void GenerateOutputGraphName(char beginningName[], char endName[]) {
+void GenerateOutputName(const char beginningName[], char endName[], const char path[], const char format[]) {
     assert(beginningName != nullptr);
     assert(endName != nullptr);
 
     static uint32_t fileCopyAmount = 0;
     int32_t fileD = 0;
 
-    sprintf(endName, GRAPHS_PATH "%s(%u).png", beginningName, fileCopyAmount);
+    sprintf(endName, "%s%s(%u)%s", path, beginningName, fileCopyAmount, format);
     while ((fileD = open(endName, O_RDONLY)) != -1) {
         fileCopyAmount++;
-        sprintf(endName, GRAPHS_PATH "%s(%u).png", beginningName, fileCopyAmount);
+        sprintf(endName, "%s%s(%u)%s", path, beginningName, fileCopyAmount, format);
     }
     close(fileD);
-    sprintf(endName, GRAPHS_PATH "%s(%u)", beginningName, fileCopyAmount);
+    sprintf(endName, "%s%s(%u)", path, beginningName, fileCopyAmount);
 }

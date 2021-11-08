@@ -1,5 +1,6 @@
 .vscode
 graphs
+dump
 
 # Prerequisites
 *.d

@@ -7,8 +7,8 @@
 #include <string.h>
 
 const int32_t BEGINNING_CHAINS_AMOUNT = 10;
-const int32_t FAIL = 0;
-const int32_t MAX_FILE_NAME_LENGTH = 100;
+const int32_t FAIL                    = 0;
+const int32_t MAX_FILE_NAME_LENGTH    = 100;
 
 const char STANDART_DUMP_NAME[]  = "dump";
 const char STANDART_GRAPH_NAME[] = "graph";
@@ -53,13 +53,13 @@ enum ListErrors {
     NON_ZERO_LOOP,
 };
 
-#define IsListOk(list)                                          \
-    {                                                           \
-    ListErrors errorNumber = NO_ERROR;                          \
-    if ((errorNumber = ListVerifier(list)) != NO_ERROR) {       \
-        fprintf(stderr, "ERROR %d ERROR\n", errorNumber);       \
-        assert(FAIL);                                           \
-    }                                                           \
+#define IsListOk(list)                                                                            \
+    {                                                                                             \
+    ListErrors errorNumber = NO_ERROR;                                                            \
+    if ((errorNumber = ListVerifier(list)) != NO_ERROR) {                                         \
+        MakeListDump(list, errorNumber, MakeListGraph(list, STANDART_GRAPH_NAME) LOCATION(list)); \
+        assert(FAIL && errorNumber);                                                                             \
+    }                                                                                             \
 }  
 
 typedef int32_t ListElem;
@@ -106,7 +106,10 @@ ListErrors ListVerifier(List* list);
 ListErrors VerifyListStructure(List* list);
 
 uint32_t ListInsertBack(List* list, ListElem appElem);
-uint32_t ListInsert(List* list, ListElem insElem, uint32_t index);
+uint32_t ListInsertBeginning(List* list, ListElem appElem);
+uint32_t ListInsertBefore(List* list, ListElem insElem, uint32_t index);
+uint32_t ListInsertAfter(List* list, ListElem insElem, uint32_t index);
+
 void ListDelete(List* list, uint32_t index);
 
 Chain* MemoryIncrease(List* list);
@@ -114,10 +117,10 @@ Chain* MemoryOptimizer_Slow_Slow(List* list);
 bool EnableSuperSpeedTranslation(List* list);
 
 int32_t FindFreeChain(List* list);
-int32_t FindLastChain(List* list);
-int32_t FindFirstChain(List* list);
-int32_t FindNChain(List* list, uint32_t chainNum);
+int32_t FindFirstChainWithValue(List* list, ListElem value);
 int32_t TranslateLogicalNumberToPhisicalFunctionAsSlowAsItsNameLong(List* list, uint32_t index);
 
 void MakeListDump(List* list, ListErrors error, char* graphName, VarInfo dumpInfo);
 const char* ConvertErrorToString(ListErrors error);
+
+int32_t ChainsComparator(const void* chain1ptr, const void* chain2ptr);

@@ -5,13 +5,10 @@ int main() {
     ListCtor(list);
 
     ListInsertBack(&list, 228);
-    ListInsertBack(&list, 322);
-    ListInsertAfter(&list, 777, 0);
-    ListInsertBack(&list, 1000-7);
-    ListDelete(&list, 1);
-    list.fastTranslationFlag = EnableSuperSpeedTranslation(&list);
-    ListInsertBack(&list, 7);
-    ListInsertBack(&list, 7);
+    ListInsertBack(&list, 1337);
+    ListInsertBack(&list, 1000 - 7);
+
+    MakeListDump(&list, NO_ERROR, MakeListGraph(&list, STANDART_GRAPH_NAME) LOCATION(list));
     PrintList(&list);
     
     ListDtor(&list);
@@ -45,6 +42,7 @@ void ListDtor(List* list) {
     #endif
     free(list->chains);
 
+    list->chains              = (Chain*)13;
     list->memoryAmount        = 0;
     list->chainsAmount        = 0;
     list->head                = 0;
@@ -147,8 +145,6 @@ uint32_t ListInsertAfter(List* list, ListElem insElem, uint32_t index) {
     if ((list->chainsAmount + 1) > list->memoryAmount) {
         list->chains = MemoryIncrease(list);
         FillChainsWithPoison(list, list->chainsAmount);
-
-        MakeListDump(list, NO_ERROR, MakeListGraph(list, STANDART_GRAPH_NAME) LOCATION(list));
     }
     
     int32_t freeChain = FindFreeChain(list);
@@ -311,7 +307,6 @@ Chain *MemoryOptimizer_Slow_Slow(List* list) {
 
     Chain* newChains = (Chain*)calloc(list->memoryAmount, sizeof(newChains[0]));
 
-    newChains = nullptr;
     for (uint32_t curChain = list->head, chainNum = 1; curChain != 0; curChain = list->chains[curChain].next, chainNum++) {
         Chain curChainStruct = list->chains[curChain];
         if (curChain == list->head) {
